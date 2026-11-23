@@ -288,6 +288,17 @@ body { padding-top: 38px; }
   transition: color .15s, background .15s;
 }
 .mega-column a:hover { color: #b4dc35; }
+.measure-column {
+  grid-column: span 4;
+  max-height: 410px;
+  overflow-y: auto;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(150px, 1fr));
+  align-content: start;
+  gap: 8px 16px;
+  scrollbar-width: thin;
+}
+.measure-column h3 { grid-column: 1 / -1; }
 .main-column a { font-size: 14px; line-height: 34px; }
 .main-column a.active { color: #a4d52a; font-weight: 800; }
 .see-more { margin-top: 4px; color: #a4d52a !important; font-weight: 700; }

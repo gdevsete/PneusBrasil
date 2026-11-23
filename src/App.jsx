@@ -4,6 +4,7 @@ import { supabase } from "./lib/supabase";
 import { products } from "./data/products";
 import { aro12Products } from "./data/aro12Products";
 import { rimProducts } from "./data/rimProducts";
+import { fullCatalog } from "./data/fullCatalog";
 
 const money = new Intl.NumberFormat("pt-BR", {
   style: "currency",
@@ -291,7 +292,7 @@ function Header({ cartCount, query, onQueryChange, onSearch, onRimSelect }) {
                 <div className="mobile-menu-tabs">
                   {[
                     ["Aros", agriculturalRims],
-                    ["Medidas", carSizes],
+                    ["Medidas", fullCatalog.measureLabels],
                     ["Caminhões", truckSizes],
                     ["Caminhões/SUV", suvSizes],
                   ].map(([label]) => (
@@ -319,8 +320,8 @@ function Header({ cartCount, query, onQueryChange, onSearch, onRimSelect }) {
                       {item}<span>›</span>
                     </a>
                   ))}
-                  {mobileSection === "Medidas" && carSizes.map((item) => (
-                    <a href="#" key={item}>{item}<span>›</span></a>
+                  {mobileSection === "Medidas" && fullCatalog.measureLabels.map((item) => (
+                    <a href="#" key={item} onClick={(event) => { event.preventDefault(); onRimSelect(item); setMenuOpen(false); }}>{item}<span>›</span></a>
                   ))}
                   {mobileSection === "Caminhões" && truckSizes.map((item) => (
                     <a href="#" key={item}>{item}<span>›</span></a>
@@ -374,9 +375,12 @@ function Header({ cartCount, query, onQueryChange, onSearch, onRimSelect }) {
                   </>
                 ) : desktopSection === "Medidas" ? (
                   <>
-                    <div className="mega-column"><h3>Carros</h3>{carSizes.map((item) => <a href="#" key={item}>{item}</a>)}</div>
-                    <div className="mega-column"><h3>Caminhões</h3>{truckSizes.map((item) => <a href="#" key={item}>{item}</a>)}</div>
-                    <div className="mega-column"><h3>Caminhões/SUV</h3>{suvSizes.map((item) => <a href="#" key={item}>{item}</a>)}</div>
+                    <div className="mega-column measure-column">
+                      <h3>Medidas disponíveis</h3>
+                      {fullCatalog.measureLabels.map((item) => (
+                        <a href="#" key={item} onClick={(event) => { event.preventDefault(); onRimSelect(item); setMenuOpen(false); }}>{item}</a>
+                      ))}
+                    </div>
                   </>
                 ) : null}
               </div>
@@ -629,9 +633,17 @@ function CatalogApp() {
 
   const sortedProducts = useMemo(() => {
     const normalizedSearch = searchTerm.trim().toLowerCase();
-    const source = selectedRim
+    const existingSource = selectedRim
       ? (rimProducts[selectedRim] || (selectedRim === "Aro 12" ? aro12Products : []))
-      : products;
+      : [];
+    const extractedRimSource = selectedRim ? (fullCatalog.byRim[selectedRim] || []) : [];
+    const extractedMeasureSource = selectedRim ? (fullCatalog.byMeasure[selectedRim] || []) : [];
+    const merged = [...existingSource, ...extractedRimSource, ...extractedMeasureSource];
+    const unique = new Map();
+    merged.forEach((product) => {
+      if (!unique.has(product.name)) unique.set(product.name, product);
+    });
+    const source = selectedRim ? [...unique.values()] : products;
     const items = [...source].filter((product) => {
       if (!normalizedSearch) return true;
       return `${product.brand} ${product.name}`.toLowerCase().includes(normalizedSearch);
