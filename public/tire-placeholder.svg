@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="300" height="300" viewBox="0 0 300 300">
+  <defs>
+    <radialGradient id="tire" cx="50%" cy="50%" r="50%">
+      <stop offset="58%" stop-color="#1c1f24"/>
+      <stop offset="59%" stop-color="#4d535b"/>
+      <stop offset="67%" stop-color="#16181b"/>
+      <stop offset="100%" stop-color="#08090a"/>
+    </radialGradient>
+  </defs>
+  <ellipse cx="150" cy="150" rx="112" ry="126" fill="url(#tire)" transform="rotate(-4 150 150)"/>
+  <ellipse cx="150" cy="150" rx="46" ry="58" fill="#eef0f3"/>
+  <ellipse cx="150" cy="150" rx="34" ry="44" fill="#dfe3e8"/>
+  <g fill="none" stroke="#737980" stroke-width="4" opacity=".45">
+    <path d="M62 82c24 17 41 16 64 8"/>
+    <path d="M48 125c31 12 52 10 78 2"/>
+    <path d="M48 173c29 8 54 4 78-5"/>
+    <path d="M68 218c24-8 45-12 68-9"/>
+  </g>
+</svg>
