@@ -356,19 +356,19 @@ function Header({ cartCount, query, onQueryChange, onSearch, onRimSelect }) {
                     <div className="mega-column">
                       <h3>Hot Rod</h3>
                       {hotRodRims.map((item) => (
-                        <a href="#" key={item} onClick={(event) => { event.preventDefault(); onRimSelect(`${item} caminhão`); setMenuOpen(false); }}>{item}</a>
+                        <a href="#" key={item} onClick={(event) => { event.preventDefault(); onRimSelect(`${item} hot rod`); setMenuOpen(false); }}>{item}</a>
                       ))}
                     </div>
                     <div className="mega-column">
                       <h3>Caminhão</h3>
                       {truckRims.map((item) => (
-                        <a href="#" key={item} onClick={(event) => { event.preventDefault(); onRimSelect(`${item} carro`); setMenuOpen(false); }}>{item}</a>
+                        <a href="#" key={item} onClick={(event) => { event.preventDefault(); onRimSelect(`${item} caminhão`); setMenuOpen(false); }}>{item}</a>
                       ))}
                     </div>
                     <div className="mega-column">
                       <h3>Carros / Camionete</h3>
                       {carAndTruckRims.map((item) => (
-                        <a href="#" key={item} onClick={(event) => { event.preventDefault(); onRimSelect(item); setMenuOpen(false); }}>{item}</a>
+                        <a href="#" key={item} onClick={(event) => { event.preventDefault(); onRimSelect(`${item} carro`); setMenuOpen(false); }}>{item}</a>
                       ))}
                     </div>
                   </>
