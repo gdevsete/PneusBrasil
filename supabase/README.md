@@ -10,3 +10,7 @@
 5. Na Vercel, configure:
    - `VITE_SUPABASE_URL=https://shovvjcntzzwvefmkbhf.supabase.co`
    - `VITE_SUPABASE_ANON_KEY=<anon key>`
+6. A migração também cria:
+   - A tabela `tracking_codes`.
+   - A função pública `get_tracking(code)`.
+   - Políticas para o administrador gerenciar rastreamentos.

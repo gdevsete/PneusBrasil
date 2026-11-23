@@ -934,6 +934,114 @@ function CheckoutShell({ children }) {
   );
 }
 
+function TrackingPage() {
+  const { code: routeCode } = useParams();
+  const [code, setCode] = useState(routeCode || "");
+  const [tracking, setTracking] = useState(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+
+  const searchTracking = async (event) => {
+    event?.preventDefault();
+    const normalizedCode = code.trim().toUpperCase();
+    if (!normalizedCode) {
+      setError("Informe o código de rastreamento.");
+      return;
+    }
+
+    setLoading(true);
+    setError("");
+    setTracking(null);
+
+    if (supabase) {
+      const { data, error: trackingError } = await supabase.rpc("get_tracking", { p_code: normalizedCode });
+      if (trackingError) {
+        setError("Não foi possível consultar o rastreamento.");
+      } else if (!data || data.length === 0) {
+        setError("Código não encontrado.");
+      } else {
+        setTracking(data[0]);
+      }
+    } else {
+      const saved = JSON.parse(localStorage.getItem("tracking-codes") || "[]");
+      const found = saved.find((item) => item.code === normalizedCode);
+      if (found) setTracking(found);
+      else setError("Código não encontrado.");
+    }
+
+    setLoading(false);
+  };
+
+  useEffect(() => {
+    if (routeCode) searchTracking();
+  }, [routeCode]);
+
+  return (
+    <main className="tracking-public">
+      <section className="tracking-shell">
+        <div className="tracking-brand">
+          <span className="tracking-brand-mark"><i /><i /><i /></span>
+          <strong>Pneus<span>Brasil</span></strong>
+        </div>
+
+        <form className="tracking-search" onSubmit={searchTracking}>
+          <div>
+            <span>CÓDIGO DE RASTREAMENTO</span>
+            <h1>Acompanhe sua encomenda</h1>
+          </div>
+          <div className="tracking-input-row">
+            <input
+              value={code}
+              onChange={(event) => setCode(event.target.value.toUpperCase())}
+              placeholder="Ex.: PNEU-AB12CD34"
+              aria-label="Código de rastreamento"
+            />
+            <button type="submit" disabled={loading}>{loading ? "Consultando..." : "RASTREAR"}</button>
+          </div>
+          {error && <div className="tracking-error">{error}</div>}
+        </form>
+
+        {tracking && (
+          <section className="tracking-result">
+            <div className="tracking-result-head">
+              <div>
+                <span>Status atual</span>
+                <strong>{tracking.current_status}</strong>
+              </div>
+              <b>{tracking.code}</b>
+            </div>
+
+            <div className="tracking-route">
+              <div><span>ORIGEM</span><strong>{tracking.origin_city}</strong></div>
+              <div className="tracking-route-line"><i /><b /><i /></div>
+              <div><span>DESTINO</span><strong>{tracking.destination_city}</strong></div>
+            </div>
+
+            <div className="tracking-history">
+              <h2>Histórico da encomenda</h2>
+              {(tracking.history || []).length === 0 ? (
+                <p>Nenhuma atualização registrada ainda.</p>
+              ) : (
+                [...tracking.history].reverse().map((item, index) => (
+                  <article className={index === 0 ? "latest" : ""} key={`${item.created_at}-${index}`}>
+                    <div className="tracking-dot" />
+                    <div>
+                      <strong>{item.status}</strong>
+                      <span>{item.city}</span>
+                      <p>{item.description}</p>
+                      <time>{item.created_at ? new Date(item.created_at).toLocaleString("pt-BR") : ""}</time>
+                    </div>
+                  </article>
+                ))
+              )}
+            </div>
+          </section>
+        )}
+      </section>
+    </main>
+  );
+}
+
 function AdminPage() {
   const [email, setEmail] = useState("fehprado2025@gmail.com");
   const [password, setPassword] = useState("");
@@ -943,6 +1051,13 @@ function AdminPage() {
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("Todos");
   const [copiedId, setCopiedId] = useState("");
+  const [trackingOrderId, setTrackingOrderId] = useState("");
+  const [trackingCode, setTrackingCode] = useState("");
+  const [originCity, setOriginCity] = useState("");
+  const [destinationCity, setDestinationCity] = useState("");
+  const [trackingStatus, setTrackingStatus] = useState("Pedido confirmado");
+  const [trackingLocation, setTrackingLocation] = useState("");
+  const [trackingDescription, setTrackingDescription] = useState("");
 
   const loadOrders = async () => {
     if (!supabase) {
@@ -1012,6 +1127,57 @@ function AdminPage() {
     await navigator.clipboard.writeText(digits);
     setCopiedId(orderId);
     window.setTimeout(() => setCopiedId(""), 1500);
+  };
+
+  const generateTrackingCode = () => {
+    const random = Math.random().toString(36).slice(2, 8).toUpperCase();
+    setTrackingCode(`PNEU-${random}`);
+  };
+
+  const saveTracking = async (event) => {
+    event.preventDefault();
+    const code = trackingCode.trim().toUpperCase();
+    if (!code || !trackingOrderId || !originCity || !destinationCity) return;
+
+    const historyItem = {
+      status: trackingStatus,
+      city: trackingLocation || originCity,
+      description: trackingDescription || "Informação de rastreamento atualizada.",
+      created_at: new Date().toISOString(),
+    };
+
+    if (supabase) {
+      const { data: existing } = await supabase
+        .from("tracking_codes")
+        .select("history")
+        .eq("code", code)
+        .maybeSingle();
+      const history = existing?.history ? [...existing.history, historyItem] : [historyItem];
+      await supabase.from("tracking_codes").upsert({
+        code,
+        order_id: trackingOrderId,
+        origin_city: originCity,
+        destination_city: destinationCity,
+        current_status: trackingStatus,
+        history,
+        updated_at: new Date().toISOString(),
+      }, { onConflict: "code" });
+    } else {
+      const saved = JSON.parse(localStorage.getItem("tracking-codes") || "[]");
+      const found = saved.find((item) => item.code === code);
+      const tracking = {
+        code,
+        order_id: trackingOrderId,
+        origin_city: originCity,
+        destination_city: destinationCity,
+        current_status: trackingStatus,
+        history: found ? [...found.history, historyItem] : [historyItem],
+        updated_at: new Date().toISOString(),
+      };
+      localStorage.setItem("tracking-codes", JSON.stringify([tracking, ...saved.filter((item) => item.code !== code)]));
+    }
+
+    setTrackingDescription("");
   };
 
   const normalizeOrder = (order) =>
@@ -1097,6 +1263,45 @@ function AdminPage() {
           <div><span>Novos</span><strong>{normalizedOrders.filter((order) => order.status === "Novo").length}</strong></div>
           <div><span>Valor em pedidos</span><strong>{money.format(normalizedOrders.reduce((total, order) => total + Number(order.total || 0), 0))}</strong></div>
         </section>
+        <section className="tracking-admin">
+          <div className="tracking-admin-head">
+            <div>
+              <span>Rastreio</span>
+              <h2>Criar ou atualizar envio</h2>
+            </div>
+          </div>
+          <form onSubmit={saveTracking}>
+            <label>
+              <span>Pedido</span>
+              <select value={trackingOrderId} onChange={(event) => setTrackingOrderId(event.target.value)} required>
+                <option value="">Selecione o pedido</option>
+                {normalizedOrders.map((order) => (
+                  <option value={order.id} key={order.id}>{order.publicId || order.id} - {order.customer.name}</option>
+                ))}
+              </select>
+            </label>
+            <label>
+              <span>Código</span>
+              <div className="tracking-code-row">
+                <input value={trackingCode} onChange={(event) => setTrackingCode(event.target.value.toUpperCase())} placeholder="PNEU-XXXXXX" required />
+                <button type="button" onClick={generateTrackingCode}>Gerar</button>
+              </div>
+            </label>
+            <label><span>Cidade de origem</span><input value={originCity} onChange={(event) => setOriginCity(event.target.value)} placeholder="Ex.: São Paulo/SP" required /></label>
+            <label><span>Cidade de destino</span><input value={destinationCity} onChange={(event) => setDestinationCity(event.target.value)} placeholder="Ex.: Fortaleza/CE" required /></label>
+            <label>
+              <span>Status atual</span>
+              <select value={trackingStatus} onChange={(event) => setTrackingStatus(event.target.value)}>
+                {["Pedido confirmado", "Enviado", "Em trânsito", "Chegou na cidade de destino", "Saiu para entrega", "Entregue"].map((status) => (
+                  <option key={status} value={status}>{status}</option>
+                ))}
+              </select>
+            </label>
+            <label><span>Local atual / por onde passou</span><input value={trackingLocation} onChange={(event) => setTrackingLocation(event.target.value)} placeholder="Ex.: Centro de distribuição de Goiânia" /></label>
+            <label className="tracking-description"><span>Descrição da atualização</span><input value={trackingDescription} onChange={(event) => setTrackingDescription(event.target.value)} placeholder="Ex.: Encomenda chegou ao centro de distribuição" /></label>
+            <button className="tracking-save" type="submit">SALVAR RASTREAMENTO</button>
+          </form>
+        </section>
         <section className="admin-orders">
           {filteredOrders.length === 0 ? (
             <div className="admin-empty"><strong>Nenhum pedido recebido</strong><span>Os pedidos aparecerão aqui automaticamente.</span></div>
@@ -1147,6 +1352,8 @@ export default function App() {
           <Route path="/" element={<CatalogApp />} />
           <Route path="/produto/:slug" element={<ProductDetail />} />
           <Route path="/finalizar-pedido" element={<CheckoutPage />} />
+          <Route path="/rastreamento/:code" element={<TrackingPage />} />
+          <Route path="/rastreamento" element={<TrackingPage />} />
           <Route path="/admin" element={<AdminPage />} />
           <Route path="*" element={<CatalogApp />} />
         </Routes>

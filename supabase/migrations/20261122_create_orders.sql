@@ -43,3 +43,51 @@ create policy "Only authenticated users can update orders"
   to authenticated
   using (true)
   with check (true);
+
+create table if not exists public.tracking_codes (
+  code text primary key,
+  order_id uuid references public.orders(id) on delete cascade,
+  origin_city text not null,
+  destination_city text not null,
+  current_status text not null default 'Pedido confirmado',
+  history jsonb not null default '[]'::jsonb,
+  updated_at timestamptz not null default now()
+);
+
+alter table public.tracking_codes enable row level security;
+
+drop policy if exists "Authenticated users manage tracking" on public.tracking_codes;
+create policy "Authenticated users manage tracking"
+  on public.tracking_codes
+  for all
+  to authenticated
+  using (true)
+  with check (true);
+
+create or replace function public.get_tracking(p_code text)
+returns table (
+  code text,
+  origin_city text,
+  destination_city text,
+  current_status text,
+  history jsonb,
+  updated_at timestamptz
+)
+language sql
+security definer
+set search_path = public
+as $$
+  select
+    t.code,
+    t.origin_city,
+    t.destination_city,
+    t.current_status,
+    t.history,
+    t.updated_at
+  from public.tracking_codes t
+  where t.code = upper(trim(p_code))
+  limit 1;
+$$;
+
+revoke all on function public.get_tracking(text) from public;
+grant execute on function public.get_tracking(text) to anon, authenticated;

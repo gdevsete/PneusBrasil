@@ -1275,6 +1275,200 @@ main { min-height: 700px; background: #f5f6f8; }
   .buy-button { font-size: 10px; }
 }
 
+.tracking-admin {
+  margin-bottom: 18px;
+  border: 1px solid #e4e7ed;
+  border-radius: 14px;
+  background: #fff;
+  padding: 16px;
+}
+.tracking-admin-head h2 { margin: 4px 0 0; font-size: 16px; }
+.tracking-admin-head span { color: #737b8b; font-size: 9px; }
+.tracking-admin form {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  margin-top: 14px;
+}
+.tracking-admin form label {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  color: #737b8b;
+  font-size: 9px;
+  font-weight: 800;
+}
+.tracking-admin form input,
+.tracking-admin form select {
+  height: 42px;
+  border: 1px solid #dde2eb;
+  border-radius: 9px;
+  background: #fff;
+  padding: 0 10px;
+  outline: none;
+  color: #252a34;
+  font-size: 11px;
+}
+.tracking-code-row { display: grid; grid-template-columns: 1fr 64px; gap: 6px; }
+.tracking-code-row input { width: 100%; }
+.tracking-code-row button {
+  border: 1px solid #173fc4;
+  border-radius: 9px;
+  background: #eef2ff;
+  color: #173fc4;
+  font-size: 9px;
+  font-weight: 900;
+  cursor: pointer;
+}
+.tracking-description { grid-column: span 2; }
+.tracking-save {
+  align-self: end;
+  height: 42px;
+  border: 0;
+  border-radius: 9px;
+  background: #173fc4;
+  color: #fff;
+  font-size: 10px;
+  font-weight: 900;
+  cursor: pointer;
+}
+
+.tracking-public {
+  min-height: 100vh;
+  background:
+    radial-gradient(circle at 20% 10%, rgba(23,63,196,.12), transparent 28rem),
+    linear-gradient(145deg, #f7f9fd, #eef2f8);
+  padding: 54px 20px;
+}
+.tracking-shell { max-width: 760px; margin: 0 auto; }
+.tracking-brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 18px;
+  color: #173fc4;
+  font-size: 20px;
+}
+.tracking-brand > strong span { color: #efb33d; }
+.tracking-brand-mark { display: flex; align-items: flex-end; gap: 3px; height: 22px; }
+.tracking-brand-mark i { width: 7px; border-radius: 4px 4px 1px 1px; background: #a5c500; }
+.tracking-brand-mark i:nth-child(1) { height: 13px; }
+.tracking-brand-mark i:nth-child(2) { height: 21px; }
+.tracking-brand-mark i:nth-child(3) { height: 16px; }
+.tracking-search {
+  border: 1px solid #e1e5ed;
+  border-radius: 18px;
+  background: #fff;
+  padding: 24px;
+  box-shadow: 0 14px 38px rgba(35,45,82,.09);
+}
+.tracking-search > div:first-child span { color: #173fc4; font-size: 9px; font-weight: 900; letter-spacing: 1px; }
+.tracking-search h1 { margin: 5px 0 18px; font-size: 28px; line-height: 34px; text-align: left; }
+.tracking-input-row { display: grid; grid-template-columns: 1fr 130px; gap: 8px; }
+.tracking-input-row input {
+  height: 48px;
+  border: 1px solid #dde2eb;
+  border-radius: 10px;
+  padding: 0 14px;
+  font-size: 13px;
+  outline: none;
+  text-transform: uppercase;
+}
+.tracking-input-row input:focus { border-color: #173fc4; box-shadow: 0 0 0 4px rgba(23,63,196,.07); }
+.tracking-input-row button {
+  border: 0;
+  border-radius: 10px;
+  background: #173fc4;
+  color: #fff;
+  font-size: 11px;
+  font-weight: 900;
+  cursor: pointer;
+}
+.tracking-error {
+  margin-top: 10px;
+  border-radius: 9px;
+  background: #fff1f2;
+  color: #a51d29;
+  padding: 9px 11px;
+  font-size: 11px;
+}
+.tracking-result {
+  margin-top: 14px;
+  border: 1px solid #e1e5ed;
+  border-radius: 18px;
+  background: #fff;
+  padding: 22px;
+  box-shadow: 0 14px 38px rgba(35,45,82,.09);
+}
+.tracking-result-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px solid #edf0f4;
+  padding-bottom: 16px;
+}
+.tracking-result-head div { display: flex; flex-direction: column; gap: 4px; }
+.tracking-result-head div span { color: #737b8b; font-size: 9px; }
+.tracking-result-head div strong { color: #173fc4; font-size: 16px; }
+.tracking-result-head b { border-radius: 20px; background: #eef2ff; color: #173fc4; padding: 7px 10px; font-size: 10px; }
+.tracking-route {
+  display: grid;
+  grid-template-columns: 1fr 130px 1fr;
+  align-items: center;
+  gap: 10px;
+  padding: 22px 0;
+}
+.tracking-route div:not(.tracking-route-line) { display: flex; flex-direction: column; gap: 4px; }
+.tracking-route div:last-child { text-align: right; }
+.tracking-route span { color: #737b8b; font-size: 9px; }
+.tracking-route strong { font-size: 13px; }
+.tracking-route-line { display: grid; grid-template-columns: 8px 1fr 8px; align-items: center; }
+.tracking-route-line i { width: 8px; height: 8px; border: 2px solid #173fc4; border-radius: 50%; }
+.tracking-route-line b { height: 2px; background: repeating-linear-gradient(90deg, #173fc4 0 5px, transparent 5px 9px); }
+.tracking-history h2 { margin: 4px 0 14px; font-size: 15px; }
+.tracking-history article {
+  position: relative;
+  display: grid;
+  grid-template-columns: 24px 1fr;
+  min-height: 82px;
+}
+.tracking-history article::before {
+  content: "";
+  position: absolute;
+  left: 7px;
+  top: 16px;
+  bottom: -2px;
+  width: 2px;
+  background: #dfe4ec;
+}
+.tracking-history article:last-child::before { display: none; }
+.tracking-dot {
+  position: relative;
+  z-index: 1;
+  width: 16px;
+  height: 16px;
+  margin-top: 2px;
+  border: 4px solid #dfe5f7;
+  border-radius: 50%;
+  background: #173fc4;
+}
+.tracking-history article.latest .tracking-dot { border-color: #ffd326; background: #173fc4; }
+.tracking-history article div:last-child { display: flex; flex-direction: column; gap: 3px; padding-bottom: 16px; }
+.tracking-history article strong { font-size: 12px; }
+.tracking-history article span { color: #173fc4; font-size: 10px; }
+.tracking-history article p { margin: 2px 0; color: #737b8b; font-size: 10px; }
+.tracking-history article time { color: #9ba1ac; font-size: 9px; }
+
+@media (max-width: 760px) {
+  .tracking-admin form { grid-template-columns: 1fr; }
+  .tracking-description { grid-column: auto; }
+  .tracking-public { padding: 28px 12px; }
+  .tracking-search, .tracking-result { padding: 16px; border-radius: 14px; }
+  .tracking-search h1 { font-size: 23px; }
+  .tracking-input-row { grid-template-columns: 1fr 105px; }
+  .tracking-route { grid-template-columns: 1fr 70px 1fr; }
+}
+
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { scroll-behavior: auto !important; transition: none !important; animation: none !important; }
 }
