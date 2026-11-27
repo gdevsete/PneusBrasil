@@ -34,15 +34,15 @@ create policy "Only authenticated users can read orders"
   on public.orders
   for select
   to authenticated
-  using (true);
+  using (lower(coalesce(auth.jwt() ->> 'email', '')) = 'fehprado2025@gmail.com');
 
 drop policy if exists "Only authenticated users can update orders" on public.orders;
 create policy "Only authenticated users can update orders"
   on public.orders
   for update
   to authenticated
-  using (true)
-  with check (true);
+  using (lower(coalesce(auth.jwt() ->> 'email', '')) = 'fehprado2025@gmail.com')
+  with check (lower(coalesce(auth.jwt() ->> 'email', '')) = 'fehprado2025@gmail.com');
 
 create table if not exists public.tracking_codes (
   code text primary key,
@@ -61,8 +61,8 @@ create policy "Authenticated users manage tracking"
   on public.tracking_codes
   for all
   to authenticated
-  using (true)
-  with check (true);
+  using (lower(coalesce(auth.jwt() ->> 'email', '')) = 'fehprado2025@gmail.com')
+  with check (lower(coalesce(auth.jwt() ->> 'email', '')) = 'fehprado2025@gmail.com');
 
 create or replace function public.get_tracking(p_code text)
 returns table (

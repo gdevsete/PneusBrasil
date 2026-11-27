@@ -21,7 +21,12 @@ export function productSlug(product) {
 }
 
 export function getAllProducts() {
-  const catalog = [...products, ...aro12Products];
+  const catalog = [
+    ...products,
+    ...aro12Products,
+    ...Object.values(fullCatalog.byRim).flat(),
+    ...Object.values(fullCatalog.byMeasure).flat(),
+  ];
   Object.values(rimProducts).forEach((items) => catalog.push(...items));
   const unique = new Map();
   catalog.forEach((product) => unique.set(productSlug(product), product));
@@ -434,17 +439,12 @@ function Filters() {
   );
 }
 
-function ProductCard({ product, onBuy }) {
+function ProductCard({ product }) {
   const [added, setAdded] = useState(false);
   const navigate = useNavigate();
   const cart = useCart();
-  const warranty = product.brand === "Bransales" ? "7" : "5";
-  const brandClass = product.brand.toLowerCase();
-  const demoRatings = [4.8, 4.9, 4.7, 5, 4.6, 4.8, 4.5, 4.9, 4.7, 5, 4.6, 4.8, 4.9, 4.5, 4.7, 5, 4.8, 4.6];
-  const demoCounts = [120, 284, 156, 430, 208, 319, 112, 502, 245, 378, 167, 449, 226, 105, 534, 291, 348, 416];
-  const rating = demoRatings[(product.id - 1) % demoRatings.length];
-  const reviewCount = demoCounts[(product.id - 1) % demoCounts.length];
-  const filledWidth = `${rating * 20}%`;
+  const brand = product.brand || "Marca não informada";
+  const brandClass = brand.toLowerCase();
 
   function buyProduct() {
     cart.addItem(product, 1);
@@ -455,15 +455,8 @@ function ProductCard({ product, onBuy }) {
   return (
     <article className="product-card" onClick={() => navigate(`/produto/${productSlug(product)}`)}>
       <div className="product-image">
-        <span className={`quality-seal quality-${brandClass}`}>
-          <b>{warranty}</b>
-          <span>
-            <small>anos</small>
-            <em>garantia</em>
-          </span>
-        </span>
         <span className={`brand-logo brand-logo-${brandClass}`}>
-          {product.brand === "JK" ? "JK TYRE" : product.brand}
+          {brand === "JK" ? "JK TYRE" : brand}
         </span>
         <img
           src={product.image}
@@ -476,15 +469,9 @@ function ProductCard({ product, onBuy }) {
         />
       </div>
       <div className="product-content">
-        <div className="brand-name">{product.brand}</div>
+        <div className="brand-name">{brand}</div>
         <div className="product-name">{product.name}</div>
-        <div className="rating" aria-label={`${rating} de 5 estrelas, ${reviewCount} avaliações`}>
-          <span className="stars" aria-hidden="true">
-            <span className="stars-empty">★★★★★</span>
-            <span className="stars-filled" style={{ width: filledWidth }}>★★★★★</span>
-          </span>
-          <strong>({reviewCount})</strong>
-        </div>
+        <div className="rating"><strong>Produto novo</strong></div>
       </div>
       <div className="product-purchase">
         <div className="price">{money.format(product.price)}</div>
@@ -528,7 +515,7 @@ function ProductDetail() {
   const plyMatch = product.name.match(/(\d+)\s+Lonas/i);
   const isAgricultural = /Agrícola|F-2|I-1|R-1|R-4|PK-/i.test(product.name);
   const related = allProducts
-    .filter((item) => item.id !== product.id)
+    .filter((item) => productSlug(item) !== slug)
     .sort((a, b) => Number(b.brand === product.brand) - Number(a.brand === product.brand))
     .slice(0, 3);
   const gallery = [product.image, product.image, product.image, product.image];
@@ -567,9 +554,9 @@ function ProductDetail() {
           </div>
 
           <div className="detail-info">
-            <span className="detail-brand">{product.brand}</span>
+            <span className="detail-brand">{product.brand || "Marca não informada"}</span>
             <h1>{product.name}</h1>
-            <div className="detail-rating"><span>★★★★★</span><small>Produto novo</small></div>
+            <div className="detail-rating"><small>Produto novo</small></div>
             <div className="detail-price">{money.format(product.price)}</div>
             <div className="detail-installments">
               ou em até 12x de R$ {(product.price / 12).toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} no cartão
@@ -587,7 +574,7 @@ function ProductDetail() {
         <section className="technical-section">
           <h2>Informações técnicas</h2>
           <div className="technical-grid">
-            <div><span>Marca</span><strong>{product.brand}</strong></div>
+            <div><span>Marca</span><strong>{product.brand || "Não informada"}</strong></div>
             <div><span>Medida</span><strong>{measure || "Consulte o nome do produto"}</strong></div>
             <div><span>Aro</span><strong>{rimMatch ? rimMatch[1] : "Consulte o nome do produto"}</strong></div>
             <div><span>Quantidade de lonas</span><strong>{plyMatch ? plyMatch[1] : "Consulte o nome do produto"}</strong></div>
@@ -600,7 +587,7 @@ function ProductDetail() {
           <h2>Produtos relacionados</h2>
           <div className="related-grid">
             {related.map((item) => (
-              <Link className="related-card" to={`/produto/${productSlug(item)}`} key={item.id || item.name}>
+              <Link className="related-card" to={`/produto/${productSlug(item)}`} key={productSlug(item)}>
                 <div className="related-image"><img src={item.image} alt={item.name} onError={(event) => { event.currentTarget.onerror = null; event.currentTarget.src = "/tire-placeholder.svg"; }} /></div>
                 <strong>{item.brand}</strong>
                 <span>{item.name}</span>
@@ -613,12 +600,7 @@ function ProductDetail() {
 
         <section className="review-section">
           <h2>Avaliações</h2>
-          <div className="review-summary">
-            <strong>4.8</strong>
-            <div><span>★★★★★</span><small>54 avaliações</small></div>
-          </div>
-          <p>Ainda não há perguntas sobre este produto.</p>
-          <input type="text" placeholder="Escreva uma pergunta" aria-label="Pergunta sobre o produto" />
+          <p>Ainda não há avaliações para este produto.</p>
         </section>
       </main>
     </>
@@ -690,7 +672,7 @@ function CatalogApp() {
             <div className="product-list">
               {sortedProducts.length > 0 ? (
                 sortedProducts.map((product) => (
-                  <ProductCard product={product} onBuy={() => {}} key={product.id} />
+                  <ProductCard product={product} key={productSlug(product)} />
                 ))
               ) : (
                 <div className="updating-products" role="status">
@@ -721,12 +703,6 @@ function detectDevice() {
     return { type: "Android", label: "Celular Android", ua };
   }
   return { type: "Computador", label: "Computador", ua };
-}
-
-async function sha256(value) {
-  const bytes = new TextEncoder().encode(value);
-  const digest = await crypto.subtle.digest("SHA-256", bytes);
-  return [...new Uint8Array(digest)].map((byte) => byte.toString(16).padStart(2, "0")).join("");
 }
 
 function CheckoutPage() {
@@ -1106,8 +1082,7 @@ function AdminPage() {
     event.preventDefault();
     setError("");
     if (!supabase) {
-      if (password === "boy@2027") setAuthenticated(true);
-      else setError("Senha incorreta");
+      setError("Configure as credenciais do Supabase para acessar o painel administrativo.");
       return;
     }
     const { error: loginError } = await supabase.auth.signInWithPassword({ email, password });
@@ -1234,10 +1209,11 @@ function AdminPage() {
         <form onSubmit={login}>
           <strong>ÁREA ADMINISTRATIVA</strong>
           <h1>Acesso restrito</h1>
+          {!supabase && <span className="admin-error">Configure o Supabase para habilitar o acesso administrativo.</span>}
           {supabase && <input type="email" value={email} onChange={(event) => setEmail(event.target.value)} placeholder="E-mail" required />}
-          <input type="password" value={password} onChange={(event) => setPassword(event.target.value)} placeholder="Senha" required />
+          {supabase && <input type="password" value={password} onChange={(event) => setPassword(event.target.value)} placeholder="Senha" required />}
           {error && <span className="admin-error">{error}</span>}
-          <button type="submit">ENTRAR</button>
+          {supabase && <button type="submit">ENTRAR</button>}
         </form>
       </div>
     );
