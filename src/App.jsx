@@ -1001,6 +1001,17 @@ function TrackingPage() {
           {error && <div className="tracking-error">{error}</div>}
         </form>
 
+        <aside className="tracking-live-notice" aria-label="Informação sobre rastreamento em tempo real">
+          <span className="tracking-live-notice-icon" aria-hidden="true">!</span>
+          <div>
+            <strong>Quer acompanhar o trajeto da entrega em tempo real?</strong>
+            <p>
+              O rastreamento em tempo real está disponível para todas as entregas. Peça ao vendedor
+              que envie o link ou aplicativo para acompanhar o percurso da loja até sua residência.
+            </p>
+          </div>
+        </aside>
+
         {tracking && (
           <section className="tracking-result">
             <div className="tracking-result-head">
