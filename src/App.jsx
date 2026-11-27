@@ -1030,7 +1030,7 @@ function TrackingPage() {
 }
 
 function AdminPage() {
-  const [email, setEmail] = useState("fehprado2025@gmail.com");
+  const [email, setEmail] = useState("fehprado2025@outlook.com");
   const [password, setPassword] = useState("");
   const [authenticated, setAuthenticated] = useState(false);
   const [error, setError] = useState("");
