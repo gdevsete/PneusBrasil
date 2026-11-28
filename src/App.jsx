@@ -706,10 +706,14 @@ function detectDevice() {
 }
 
 function CheckoutPage() {
+  const { token } = useParams();
   const cart = useCart();
   const navigate = useNavigate();
   const [submitted, setSubmitted] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState("");
+  const [sharedItems, setSharedItems] = useState(null);
+  const [sharedError, setSharedError] = useState("");
   const [cepStatus, setCepStatus] = useState("");
   const [form, setForm] = useState({
     name: "",
@@ -723,6 +727,31 @@ function CheckoutPage() {
     complement: "",
     payment: "Pix",
   });
+
+  useEffect(() => {
+    if (!token) return;
+    let active = true;
+    setSharedItems(null);
+    setSharedError("");
+    if (!supabase) {
+      setSharedError("Este link precisa de uma conexão ativa com o sistema. Fale com o vendedor.");
+      return () => { active = false; };
+    }
+    supabase.rpc("get_checkout_link", { p_token: token }).then(({ data, error }) => {
+      if (!active) return;
+      if (error || !data || data.length === 0) {
+        setSharedError("Este link expirou ou já foi usado. Fale com o vendedor para receber um novo link.");
+      } else {
+        setSharedItems(data[0].items || []);
+      }
+    }).catch(() => {
+      if (active) setSharedError("NÃ£o foi possível consultar este pedido. Verifique sua conexão e tente novamente.");
+    });
+    return () => { active = false; };
+  }, [token]);
+
+  const checkoutItems = token ? (sharedItems || []) : cart.items;
+  const checkoutTotal = checkoutItems.reduce((total, item) => total + item.price * item.quantity, 0);
 
   const updateField = (field, value) => setForm((current) => ({ ...current, [field]: value }));
 
@@ -756,20 +785,45 @@ function CheckoutPage() {
 
   const submitOrder = async (event) => {
     event.preventDefault();
-    if (cart.items.length === 0) return;
+    if (submitting) return;
+    if (checkoutItems.length === 0) return;
     setSubmitError("");
-
-    const order = {
-      id: `PED-${Date.now().toString().slice(-8)}`,
-      createdAt: new Date().toISOString(),
-      customer: form,
-      items: cart.items,
-      total: cart.cartTotal,
-      status: "Novo",
-      device: detectDevice(),
-    };
+    setSubmitting(true);
+    const device = detectDevice();
 
     try {
+      if (token) {
+        const { error } = await supabase.rpc("submit_checkout_link_order", {
+          p_token: token,
+          p_customer_name: form.name,
+          p_whatsapp: form.whatsapp,
+          p_cep: form.cep,
+          p_street: form.street,
+          p_number: form.number,
+          p_neighborhood: form.neighborhood,
+          p_city: form.city,
+          p_state: form.state,
+          p_complement: form.complement,
+          p_payment_method: form.payment,
+          p_device_type: device.type,
+          p_device_label: device.label,
+          p_user_agent: device.ua,
+        });
+        if (error) throw error;
+        setSubmitted(true);
+        return;
+      }
+
+      const order = {
+        id: `PED-${Date.now().toString().slice(-8)}`,
+        createdAt: new Date().toISOString(),
+        customer: form,
+        items: cart.items,
+        total: cart.cartTotal,
+        status: "Novo",
+        device,
+      };
+
       if (supabase) {
         const { error } = await supabase.from("orders").insert({
           public_id: order.id,
@@ -799,7 +853,11 @@ function CheckoutPage() {
       cart.items.forEach((item) => cart.removeItem(item.slug));
       setSubmitted(true);
     } catch (error) {
-      setSubmitError(error.message || "Não foi possível enviar o pedido. Tente novamente.");
+      setSubmitError(token
+        ? "Não foi possível enviar. O link pode ter expirado ou já ter sido utilizado. Fale com o vendedor."
+        : error.message || "Não foi possível enviar o pedido. Tente novamente.");
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -821,7 +879,23 @@ function CheckoutPage() {
     );
   }
 
-  if (cart.items.length === 0) {
+  if (token && !sharedItems && !sharedError) {
+    return <CheckoutShell><section className="checkout-empty"><strong>Carregando seu pedido...</strong></section></CheckoutShell>;
+  }
+
+  if (token && sharedError) {
+    return (
+      <CheckoutShell>
+        <section className="checkout-empty">
+          <strong>Não foi possível abrir este pedido</strong>
+          <p>{sharedError}</p>
+          <a href="https://wa.me/" target="_blank" rel="noreferrer">Falar com o vendedor pelo WhatsApp</a>
+        </section>
+      </CheckoutShell>
+    );
+  }
+
+  if (checkoutItems.length === 0) {
     return (
       <CheckoutShell>
         <section className="checkout-empty">
@@ -877,19 +951,19 @@ function CheckoutPage() {
             </section>
 
             {submitError && <div className="checkout-error">{submitError}</div>}
-            <button className="checkout-submit" type="submit">ENVIAR PEDIDO</button>
+            <button className="checkout-submit" type="submit" disabled={submitting}>{submitting ? "ENVIANDO PEDIDO..." : "ENVIAR PEDIDO"}</button>
           </form>
 
           <aside className="checkout-summary">
             <h2>Resumo do pedido</h2>
-            {cart.items.map((item) => (
-              <div className="checkout-item" key={item.slug}>
+            {checkoutItems.map((item, index) => (
+              <div className="checkout-item" key={item.slug || `${item.name}-${index}`}>
                 <img src={item.image} alt={item.name} onError={(event) => { event.currentTarget.onerror = null; event.currentTarget.src = "/tire-placeholder.svg"; }} />
-                <div><strong>{item.brand}</strong><span>{item.name}</span><small>{item.quantity} unidade(s)</small></div>
+                <div><strong>{item.brand || "Marca não informada"}</strong><span>{item.name}</span><small>{item.quantity} unidade(s)</small></div>
                 <b>{money.format(item.price * item.quantity)}</b>
               </div>
             ))}
-            <div className="checkout-total"><span>Total</span><strong>{money.format(cart.cartTotal)}</strong></div>
+            <div className="checkout-total"><span>Total</span><strong>{money.format(checkoutTotal)}</strong></div>
             <div className="checkout-reassurance">
               <strong>PAGAMENTO SOMENTE NA ENTREGA</strong>
               <p>Não realizamos cobrança antecipada. Um vendedor entrará em contato pelo WhatsApp para confirmar seus dados e o pedido.</p>
@@ -1030,6 +1104,7 @@ function TrackingPage() {
 }
 
 function AdminPage() {
+  const availableProducts = getAllProducts();
   const [email, setEmail] = useState("fehprado2025@outlook.com");
   const [password, setPassword] = useState("");
   const [authenticated, setAuthenticated] = useState(false);
@@ -1045,6 +1120,13 @@ function AdminPage() {
   const [trackingStatus, setTrackingStatus] = useState("Pedido confirmado");
   const [trackingLocation, setTrackingLocation] = useState("");
   const [trackingDescription, setTrackingDescription] = useState("");
+  const [checkoutItems, setCheckoutItems] = useState([]);
+  const [productSearch, setProductSearch] = useState("");
+  const [checkoutLinks, setCheckoutLinks] = useState([]);
+  const [linkSaving, setLinkSaving] = useState(false);
+  const [linkError, setLinkError] = useState("");
+  const [latestCheckoutLink, setLatestCheckoutLink] = useState("");
+  const [copiedCheckoutToken, setCopiedCheckoutToken] = useState("");
 
   const loadOrders = async () => {
     if (!supabase) {
@@ -1058,6 +1140,16 @@ function AdminPage() {
     if (!loadError) setOrders(data || []);
   };
 
+  const loadCheckoutLinks = async () => {
+    if (!supabase) return;
+    const { data, error: linksError } = await supabase
+      .from("checkout_links")
+      .select("id, token, items, created_at, expires_at, used_at")
+      .order("created_at", { ascending: false })
+      .limit(20);
+    if (!linksError) setCheckoutLinks(data || []);
+  };
+
   useEffect(() => {
     if (!supabase) return;
     supabase.auth.getSession().then(({ data }) => {
@@ -1068,6 +1160,7 @@ function AdminPage() {
   useEffect(() => {
     if (!authenticated) return;
     loadOrders();
+    loadCheckoutLinks();
     if (!supabase) return;
     const channel = supabase
       .channel("admin-orders")
@@ -1077,6 +1170,64 @@ function AdminPage() {
       supabase.removeChannel(channel);
     };
   }, [authenticated]);
+
+  const addCheckoutProduct = (product) => {
+    const slug = productSlug(product);
+    setCheckoutItems((current) => {
+      const existing = current.find((item) => item.slug === slug);
+      if (existing) {
+        return current.map((item) => item.slug === slug ? { ...item, quantity: item.quantity + 1 } : item);
+      }
+      return [...current, { ...product, slug, quantity: 1 }];
+    });
+    setProductSearch("");
+    setLinkError("");
+  };
+
+  const updateCheckoutQuantity = (slug, quantity) => {
+    setCheckoutItems((current) => quantity < 1
+      ? current.filter((item) => item.slug !== slug)
+      : current.map((item) => item.slug === slug ? { ...item, quantity } : item));
+  };
+
+  const updateCheckoutPrice = (slug, price) => {
+    const normalizedPrice = Math.round(Math.max(0, Number(price) || 0) * 100) / 100;
+    setCheckoutItems((current) => current.map((item) => item.slug === slug ? { ...item, price: normalizedPrice } : item));
+  };
+
+  const createCheckoutLink = async () => {
+    setLinkError("");
+    if (!supabase || checkoutItems.length === 0) {
+      setLinkError("Adicione pelo menos um pneu antes de gerar o link.");
+      return;
+    }
+    setLinkSaving(true);
+    const token = crypto.randomUUID().replace(/-/g, "");
+    const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
+    const items = checkoutItems.map(({ id, slug, brand, name, price, image, quantity }) => ({
+      id: String(id), slug, brand, name, price: Number(price), image, quantity: Number(quantity),
+    }));
+    const { error: createError } = await supabase
+      .from("checkout_links")
+      .insert({ token, items, expires_at: expiresAt })
+      .then((result) => result)
+      .catch(() => ({ error: true }));
+    setLinkSaving(false);
+    if (createError) {
+      setLinkError("Não foi possível criar o link. Verifique se a migração do checkout foi aplicada no Supabase.");
+      return;
+    }
+    const link = `${window.location.origin}/pedido/${token}`;
+    setLatestCheckoutLink(link);
+    setCheckoutItems([]);
+    await loadCheckoutLinks();
+  };
+
+  const copyCheckoutLink = async (link, token) => {
+    await navigator.clipboard.writeText(link);
+    setCopiedCheckoutToken(token);
+    window.setTimeout(() => setCopiedCheckoutToken(""), 1600);
+  };
 
   const login = async (event) => {
     event.preventDefault();
@@ -1202,6 +1353,12 @@ function AdminPage() {
       String(order.publicId || "").toLowerCase().includes(query);
     return matchesStatus && matchesSearch;
   });
+  const productMatches = productSearch.trim()
+    ? availableProducts
+        .filter((product) => `${product.brand} ${product.name}`.toLowerCase().includes(productSearch.trim().toLowerCase()))
+        .slice(0, 10)
+    : [];
+  const checkoutItemsTotal = checkoutItems.reduce((total, item) => total + item.price * item.quantity, 0);
 
   if (!authenticated) {
     return (
@@ -1243,12 +1400,82 @@ function AdminPage() {
               ))}
             </select>
           </label>
-          <button type="button" onClick={loadOrders}>Atualizar</button>
+          <button type="button" onClick={() => { loadOrders(); loadCheckoutLinks(); }}>Atualizar</button>
         </div>
         <section className="admin-stats">
           <div><span>Total de pedidos</span><strong>{normalizedOrders.length}</strong></div>
           <div><span>Novos</span><strong>{normalizedOrders.filter((order) => order.status === "Novo").length}</strong></div>
           <div><span>Valor em pedidos</span><strong>{money.format(normalizedOrders.reduce((total, order) => total + Number(order.total || 0), 0))}</strong></div>
+        </section>
+        <section className="checkout-link-admin">
+          <div className="tracking-admin-head">
+            <div>
+              <span>Pedido pelo WhatsApp</span>
+              <h2>Preparar link de finalização</h2>
+            </div>
+          </div>
+          <p>Escolha os pneus e as quantidades. O cliente receberá um link para preencher os dados de entrega e escolher o pagamento na entrega.</p>
+          <label className="checkout-product-search">
+            <span>Buscar pneu no catálogo</span>
+            <input value={productSearch} onChange={(event) => setProductSearch(event.target.value)} placeholder="Marca, medida ou modelo" />
+          </label>
+          {productMatches.length > 0 && (
+            <div className="checkout-product-matches">
+              {productMatches.map((product) => (
+                <button type="button" key={productSlug(product)} onClick={() => addCheckoutProduct(product)}>
+                  <span><strong>{product.brand || "Marca não informada"}</strong>{product.name}</span>
+                  <b>{money.format(product.price)}</b>
+                </button>
+              ))}
+            </div>
+          )}
+          {checkoutItems.length > 0 && (
+            <div className="checkout-link-items">
+              {checkoutItems.map((item) => (
+                <article key={item.slug}>
+                  <div><strong>{item.brand || "Marca não informada"}</strong><span>{item.name}</span><small>{money.format(item.price)} cada</small></div>
+                  <label><span>Qtd.</span><input type="number" min="0" max="99" value={item.quantity} onChange={(event) => updateCheckoutQuantity(item.slug, Number(event.target.value))} /></label>
+                  <label><span>Unitário</span><input type="number" min="0.01" step="0.01" value={item.price} onChange={(event) => updateCheckoutPrice(item.slug, event.target.value)} /></label>
+                  <b>{money.format(item.price * item.quantity)}</b>
+                </article>
+              ))}
+              <div className="checkout-link-total"><span>Total do pedido</span><strong>{money.format(checkoutItemsTotal)}</strong></div>
+            </div>
+          )}
+          {linkError && <div className="checkout-error">{linkError}</div>}
+          <button className="checkout-link-create" type="button" onClick={createCheckoutLink} disabled={linkSaving || checkoutItems.length === 0 || checkoutItems.some((item) => item.price <= 0)}>
+            {linkSaving ? "GERANDO LINK..." : "GERAR LINK PARA O CLIENTE"}
+          </button>
+          {latestCheckoutLink && (
+            <div className="checkout-link-created">
+              <strong>Link pronto. Ele expira em 7 dias e pode ser usado uma vez.</strong>
+              <input readOnly value={latestCheckoutLink} aria-label="Link do pedido" />
+              <div>
+                <button type="button" onClick={() => copyCheckoutLink(latestCheckoutLink, "latest")}>
+                  {copiedCheckoutToken === "latest" ? "Copiado" : "Copiar link"}
+                </button>
+                <a href={`https://wa.me/?text=${encodeURIComponent(`Olá! Confira os pneus e finalize seu pedido com pagamento na entrega: ${latestCheckoutLink}`)}`} target="_blank" rel="noreferrer">Abrir WhatsApp</a>
+              </div>
+            </div>
+          )}
+          {checkoutLinks.length > 0 && (
+            <div className="checkout-link-history">
+              <h3>Links recentes</h3>
+              {checkoutLinks.map((link) => {
+                const url = `${window.location.origin}/pedido/${link.token}`;
+                const expired = new Date(link.expires_at).getTime() <= Date.now();
+                const status = link.used_at ? "Pedido enviado" : expired ? "Expirado" : "Aguardando cliente";
+                return (
+                  <article key={link.id}>
+                    <div><strong>{link.items.map((item) => `${item.quantity}x ${item.name}`).join(" · ")}</strong><span>{status} · {new Date(link.created_at).toLocaleString("pt-BR")}</span></div>
+                    <button type="button" disabled={Boolean(link.used_at) || expired} onClick={() => copyCheckoutLink(url, link.token)}>
+                      {copiedCheckoutToken === link.token ? "Copiado" : "Copiar"}
+                    </button>
+                  </article>
+                );
+              })}
+            </div>
+          )}
         </section>
         <section className="tracking-admin">
           <div className="tracking-admin-head">
@@ -1339,6 +1566,7 @@ export default function App() {
           <Route path="/" element={<CatalogApp />} />
           <Route path="/produto/:slug" element={<ProductDetail />} />
           <Route path="/finalizar-pedido" element={<CheckoutPage />} />
+          <Route path="/pedido/:token" element={<CheckoutPage />} />
           <Route path="/rastreamento/:code" element={<TrackingPage />} />
           <Route path="/rastreamento" element={<TrackingPage />} />
           <Route path="/admin" element={<AdminPage />} />

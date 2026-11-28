@@ -3,6 +3,7 @@
 1. No Supabase Dashboard, abra **SQL Editor**.
 2. Execute `migrations/20261122_create_orders.sql`.
    - Se o banco já foi configurado, execute também `migrations/20261126_restrict_admin_access.sql` para restringir leitura e alterações ao e-mail administrador.
+   - Execute `migrations/20261127_create_checkout_links.sql` para habilitar links de finalização individuais, de uso único e com validade de sete dias.
 3. Abra **Authentication > Users > Add user**.
 4. Crie o administrador com:
    - E-mail: `fehprado2025@outlook.com`
