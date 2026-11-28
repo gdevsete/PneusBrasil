@@ -11,6 +11,18 @@ const money = new Intl.NumberFormat("pt-BR", {
   currency: "BRL",
 });
 
+function parseBrazilianPrice(value) {
+  const normalized = String(value).trim().replace(/[^\d.,-]/g, "");
+  if (!normalized) return Number.NaN;
+  if (normalized.includes(",")) {
+    return Number(normalized.replace(/\./g, "").replace(",", "."));
+  }
+  if (/^\d{1,3}(\.\d{3})+$/.test(normalized)) {
+    return Number(normalized.replace(/\./g, ""));
+  }
+  return Number(normalized);
+}
+
 export function productSlug(product) {
   return product.name
     .normalize("NFD")
@@ -1125,11 +1137,25 @@ function AdminPage() {
   const [customBrand, setCustomBrand] = useState("");
   const [customPrice, setCustomPrice] = useState("");
   const [customQuantity, setCustomQuantity] = useState(1);
+  const [customImageUrl, setCustomImageUrl] = useState("");
+  const [customImageFile, setCustomImageFile] = useState(null);
+  const [customImagePreview, setCustomImagePreview] = useState("");
+  const [customImageUploading, setCustomImageUploading] = useState(false);
   const [checkoutLinks, setCheckoutLinks] = useState([]);
   const [linkSaving, setLinkSaving] = useState(false);
   const [linkError, setLinkError] = useState("");
   const [latestCheckoutLink, setLatestCheckoutLink] = useState("");
   const [copiedCheckoutToken, setCopiedCheckoutToken] = useState("");
+
+  useEffect(() => {
+    if (!customImageFile) {
+      setCustomImagePreview("");
+      return;
+    }
+    const preview = URL.createObjectURL(customImageFile);
+    setCustomImagePreview(preview);
+    return () => URL.revokeObjectURL(preview);
+  }, [customImageFile]);
 
   const loadOrders = async () => {
     if (!supabase) {
@@ -1198,10 +1224,42 @@ function AdminPage() {
     setCheckoutItems((current) => current.map((item) => item.slug === slug ? { ...item, price: normalizedPrice } : item));
   };
 
-  const addCustomCheckoutProduct = () => {
+  const addCustomCheckoutProduct = async () => {
     const name = productSearch.trim();
-    const price = Math.round(Number(customPrice) * 100) / 100;
+    const price = Math.round(parseBrazilianPrice(customPrice) * 100) / 100;
     if (!name || !Number.isFinite(price) || price <= 0 || customQuantity < 1) return;
+    let image = customImageUrl.trim() || "/tire-placeholder.svg";
+    if (customImageUrl.trim()) {
+      try {
+        const parsedUrl = new URL(customImageUrl.trim());
+        if (!["http:", "https:"].includes(parsedUrl.protocol)) throw new Error("URL inválida");
+      } catch {
+        setLinkError("Informe um link de imagem válido começando com https://.");
+        return;
+      }
+    }
+    if (customImageFile) {
+      const extensions = { "image/jpeg": "jpg", "image/png": "png", "image/webp": "webp", "image/avif": "avif" };
+      const extension = extensions[customImageFile.type];
+      if (!extension || customImageFile.size > 5 * 1024 * 1024) {
+        setLinkError("Use uma imagem JPG, PNG, WEBP ou AVIF de até 5 MB.");
+        return;
+      }
+      setCustomImageUploading(true);
+      const path = `${crypto.randomUUID()}.${extension}`;
+      try {
+        const { error: uploadError } = await supabase.storage
+          .from("checkout-product-images")
+          .upload(path, customImageFile, { cacheControl: "31536000", upsert: false });
+        if (uploadError) throw uploadError;
+        image = supabase.storage.from("checkout-product-images").getPublicUrl(path).data.publicUrl;
+      } catch {
+        setLinkError("Não foi possível enviar a imagem. Aplique a migração de imagens do Supabase e tente novamente.");
+        return;
+      } finally {
+        setCustomImageUploading(false);
+      }
+    }
     const slug = `manual-${crypto.randomUUID()}`;
     setCheckoutItems((current) => [...current, {
       id: slug,
@@ -1209,13 +1267,15 @@ function AdminPage() {
       brand: customBrand.trim() || "Pneu sob encomenda",
       name,
       price,
-      image: "/tire-placeholder.svg",
+      image,
       quantity: Number(customQuantity),
     }]);
     setProductSearch("");
     setCustomBrand("");
     setCustomPrice("");
     setCustomQuantity(1);
+    setCustomImageUrl("");
+    setCustomImageFile(null);
     setLinkError("");
   };
 
@@ -1459,10 +1519,18 @@ function AdminPage() {
               <span>Adicione os dados combinados com o cliente:</span>
               <div>
                 <label><span>Marca</span><input value={customBrand} onChange={(event) => setCustomBrand(event.target.value)} placeholder="Ex.: XBRI" /></label>
-                <label><span>Preço unitário</span><input type="number" min="0.01" step="0.01" value={customPrice} onChange={(event) => setCustomPrice(event.target.value)} placeholder="R$ 0,00" /></label>
+                <label><span>Preço unitário</span><input type="text" inputMode="decimal" value={customPrice} onChange={(event) => setCustomPrice(event.target.value)} placeholder="Ex.: 2150 ou 2.150,00" /></label>
                 <label><span>Quantidade</span><input type="number" min="1" max="99" value={customQuantity} onChange={(event) => setCustomQuantity(Math.max(1, Number(event.target.value) || 1))} /></label>
               </div>
-              <button type="button" onClick={addCustomCheckoutProduct} disabled={!customPrice || Number(customPrice) <= 0}>ADICIONAR PNEU</button>
+              <div className="checkout-image-options">
+                <label><span>Imagem por link</span><input type="url" value={customImageUrl} onChange={(event) => { setCustomImageUrl(event.target.value); setCustomImageFile(null); }} placeholder="https://..." /></label>
+                <label><span>Ou escolha uma imagem do computador</span><input type="file" accept="image/jpeg,image/png,image/webp,image/avif" onChange={(event) => { setCustomImageFile(event.target.files?.[0] || null); setCustomImageUrl(""); }} /></label>
+                {(customImagePreview || customImageUrl) && <img src={customImagePreview || customImageUrl} alt="Prévia da imagem do pneu" />}
+              </div>
+              <small className="checkout-price-help">Digite o valor em reais. Exemplos: 2150, 2.150 ou 2.150,00.</small>
+              <button type="button" onClick={addCustomCheckoutProduct} disabled={!Number.isFinite(parseBrazilianPrice(customPrice)) || parseBrazilianPrice(customPrice) <= 0 || customImageUploading}>
+                {customImageUploading ? "ENVIANDO IMAGEM..." : "ADICIONAR PNEU"}
+              </button>
             </div>
           )}
           {checkoutItems.length > 0 && (
