@@ -1122,6 +1122,9 @@ function AdminPage() {
   const [trackingDescription, setTrackingDescription] = useState("");
   const [checkoutItems, setCheckoutItems] = useState([]);
   const [productSearch, setProductSearch] = useState("");
+  const [customBrand, setCustomBrand] = useState("");
+  const [customPrice, setCustomPrice] = useState("");
+  const [customQuantity, setCustomQuantity] = useState(1);
   const [checkoutLinks, setCheckoutLinks] = useState([]);
   const [linkSaving, setLinkSaving] = useState(false);
   const [linkError, setLinkError] = useState("");
@@ -1193,6 +1196,27 @@ function AdminPage() {
   const updateCheckoutPrice = (slug, price) => {
     const normalizedPrice = Math.round(Math.max(0, Number(price) || 0) * 100) / 100;
     setCheckoutItems((current) => current.map((item) => item.slug === slug ? { ...item, price: normalizedPrice } : item));
+  };
+
+  const addCustomCheckoutProduct = () => {
+    const name = productSearch.trim();
+    const price = Math.round(Number(customPrice) * 100) / 100;
+    if (!name || !Number.isFinite(price) || price <= 0 || customQuantity < 1) return;
+    const slug = `manual-${crypto.randomUUID()}`;
+    setCheckoutItems((current) => [...current, {
+      id: slug,
+      slug,
+      brand: customBrand.trim() || "Pneu sob encomenda",
+      name,
+      price,
+      image: "/tire-placeholder.svg",
+      quantity: Number(customQuantity),
+    }]);
+    setProductSearch("");
+    setCustomBrand("");
+    setCustomPrice("");
+    setCustomQuantity(1);
+    setLinkError("");
   };
 
   const createCheckoutLink = async () => {
@@ -1427,6 +1451,18 @@ function AdminPage() {
                   <b>{money.format(product.price)}</b>
                 </button>
               ))}
+            </div>
+          )}
+          {productSearch.trim() && productMatches.length === 0 && (
+            <div className="checkout-manual-product">
+              <strong>Não encontramos esse pneu no catálogo</strong>
+              <span>Adicione os dados combinados com o cliente:</span>
+              <div>
+                <label><span>Marca</span><input value={customBrand} onChange={(event) => setCustomBrand(event.target.value)} placeholder="Ex.: XBRI" /></label>
+                <label><span>Preço unitário</span><input type="number" min="0.01" step="0.01" value={customPrice} onChange={(event) => setCustomPrice(event.target.value)} placeholder="R$ 0,00" /></label>
+                <label><span>Quantidade</span><input type="number" min="1" max="99" value={customQuantity} onChange={(event) => setCustomQuantity(Math.max(1, Number(event.target.value) || 1))} /></label>
+              </div>
+              <button type="button" onClick={addCustomCheckoutProduct} disabled={!customPrice || Number(customPrice) <= 0}>ADICIONAR PNEU</button>
             </div>
           )}
           {checkoutItems.length > 0 && (
