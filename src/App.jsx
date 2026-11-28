@@ -1060,7 +1060,7 @@ function AndroidDownloadPage() {
             <div className="android-icon-large"><AndroidIcon /></div>
             <span className="android-eyebrow">APLICATIVO PARA ANDROID</span>
             <h1>Rastreamento da sua entrega</h1>
-            <p>Baixe o aplicativo oficial para acompanhar as atualizações do percurso da loja até sua casa. Peça ao vendedor os dados ou o link de acesso ao rastreamento do seu pedido.</p>
+            <p>Acompanhe as atualizações da entrega, da loja até sua casa. Este é o canal oficial da PneusBrasil para baixar o aplicativo Android. Depois da instalação, peça ao vendedor os dados de acesso ao rastreamento do seu pedido.</p>
           </section>
 
           <section className="android-release-card">
@@ -1094,14 +1094,14 @@ function AndroidDownloadPage() {
           </section>
 
           <section className="android-security-card">
-            <h2>Segurança e origem do download</h2>
+            <h2>Baixe com confiança pelo canal oficial</h2>
+            <p>Você está no site oficial da PneusBrasil. O aplicativo disponibilizado aqui é publicado pela nossa equipe para clientes acompanharem a entrega.</p>
             <ul>
-              <li>Esta é a página oficial PneusBrasil para baixar o aplicativo Android.</li>
-              <li>O arquivo é entregue por uma conexão segura HTTPS.</li>
-              <li>A publicação e a substituição do APK são restritas ao administrador autorizado.</li>
-              <li>Confira o nome e a versão exibidos nesta página e baixe somente o arquivo disponibilizado aqui.</li>
+              <li>O download é feito por uma conexão segura HTTPS.</li>
+              <li>Somente o administrador autorizado pode publicar ou atualizar o aplicativo.</li>
+              <li>O nome, a versão, o tamanho e a data de publicação ficam visíveis antes de baixar.</li>
             </ul>
-            <p className="android-security-note">A equipe deve publicar somente o APK oficial, assinado e revisado antes do envio. O site controla quem pode publicar e protege a conexão do download.</p>
+            <p className="android-security-note">Para sua tranquilidade, use sempre o botão de download desta página e confirme que o nome e a versão correspondem às informações exibidas acima. A equipe publica somente a versão oficial do aplicativo.</p>
           </section>
         </div>
       </main>
@@ -1262,7 +1262,7 @@ function AdminPage() {
   const [copiedCheckoutToken, setCopiedCheckoutToken] = useState("");
   const [appName, setAppName] = useState("PneusBrasil Rastreamento");
   const [appVersion, setAppVersion] = useState("");
-  const [appDescription, setAppDescription] = useState("");
+  const [appDescription, setAppDescription] = useState("Aplicativo oficial PneusBrasil para acompanhar as atualizações da entrega. Baixe por esta página segura e peça ao vendedor os dados de acesso do seu pedido.");
   const [appReleaseNotes, setAppReleaseNotes] = useState("");
   const [apkFile, setApkFile] = useState(null);
   const [androidRelease, setAndroidRelease] = useState(null);
