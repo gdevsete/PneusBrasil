@@ -23,6 +23,11 @@ function parseBrazilianPrice(value) {
   return Number(normalized);
 }
 
+function formatFileSize(bytes) {
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(0)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
+
 export function productSlug(product) {
   return product.name
     .normalize("NFD")
@@ -169,6 +174,19 @@ function CartIcon() {
       <path d="M3 4h2l2.1 10.2a2 2 0 0 0 2 1.6h7.7a2 2 0 0 0 2-1.6L20.5 7H6" />
       <circle cx="9" cy="20" r="1" />
       <circle cx="18" cy="20" r="1" />
+    </svg>
+  );
+}
+
+function AndroidIcon() {
+  return (
+    <svg viewBox="0 0 48 48" aria-hidden="true" focusable="false">
+      <g fill="currentColor">
+        <path d="M14 12 10.5 6.5a1 1 0 0 1 1.7-1l3.8 6a16 16 0 0 1 16 0l3.8-6a1 1 0 1 1 1.7 1L33.9 12A15 15 0 0 1 41 24H7a15 15 0 0 1 7-12Z" />
+        <path d="M8 26h32v11a3 3 0 0 1-3 3h-2v4a2 2 0 0 1-4 0v-4H17v4a2 2 0 0 1-4 0v-4h-2a3 3 0 0 1-3-3V26Z" />
+        <path d="M3 27a2 2 0 0 1 4 0v9a2 2 0 0 1-4 0v-9Zm38 0a2 2 0 0 1 4 0v9a2 2 0 0 1-4 0v-9Z" />
+      </g>
+      <g fill="#fff"><circle cx="17" cy="18" r="1.4" /><circle cx="31" cy="18" r="1.4" /></g>
     </svg>
   );
 }
@@ -403,6 +421,7 @@ function Header({ cartCount, query, onQueryChange, onSearch, onRimSelect }) {
               </div>
             )}
           </div>
+          <Link className="android-app-nav" to="/app"><AndroidIcon /><span>Aplicativo Android</span></Link>
         </nav>
       </header>
     </>
@@ -1003,6 +1022,113 @@ function CheckoutShell({ children }) {
   );
 }
 
+function AndroidDownloadPage() {
+  const [release, setRelease] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+  const [copiedHash, setCopiedHash] = useState(false);
+
+  useEffect(() => {
+    let active = true;
+    if (!supabase) {
+      setError("O serviço de download está temporariamente indisponível.");
+      setLoading(false);
+      return () => { active = false; };
+    }
+    supabase.rpc("get_android_app_release").then(({ data, error: releaseError }) => {
+      if (!active) return;
+      if (releaseError) setError("Não foi possível carregar os dados do aplicativo.");
+      else setRelease(data?.[0] || null);
+      setLoading(false);
+    }).catch(() => {
+      if (!active) return;
+      setError("Não foi possível carregar os dados do aplicativo.");
+      setLoading(false);
+    });
+    return () => { active = false; };
+  }, []);
+
+  const copyHash = async () => {
+    if (!release?.sha256) return;
+    try {
+      await navigator.clipboard.writeText(release.sha256);
+      setCopiedHash(true);
+      window.setTimeout(() => setCopiedHash(false), 1600);
+    } catch {
+      setCopiedHash(false);
+    }
+  };
+
+  const downloadUrl = release && supabase
+    ? supabase.storage.from("android-app-downloads").getPublicUrl(release.file_path, { download: "aplicativo-pneusbrasil.apk" }).data.publicUrl
+    : "";
+
+  return (
+    <>
+      <Header cartCount={0} query="" onQueryChange={() => {}} onSearch={() => {}} onRimSelect={() => {}} />
+      <main className="android-download-page">
+        <div className="android-download-shell">
+          <section className="android-hero">
+            <div className="android-icon-large"><AndroidIcon /></div>
+            <span className="android-eyebrow">APLICATIVO PARA ANDROID</span>
+            <h1>Rastreamento da sua entrega</h1>
+            <p>Baixe o aplicativo oficial para acompanhar as atualizações do percurso da loja até sua casa. Peça ao vendedor os dados ou o link de acesso ao rastreamento do seu pedido.</p>
+          </section>
+
+          <section className="android-release-card">
+            {loading ? (
+              <p>Carregando informações do aplicativo...</p>
+            ) : error ? (
+              <p className="android-download-error">{error}</p>
+            ) : release ? (
+              <>
+                <div className="android-release-heading">
+                  <div><span>VERSÃO PUBLICADA</span><h2>{release.app_name}</h2></div>
+                  <b>v{release.version}</b>
+                </div>
+                <p>{release.description}</p>
+                {release.release_notes && <div className="android-release-notes"><strong>Novidades</strong><p>{release.release_notes}</p></div>}
+                <div className="android-release-meta">
+                  <div><span>Arquivo</span><strong>APK para Android</strong></div>
+                  <div><span>Tamanho</span><strong>{formatFileSize(Number(release.file_size_bytes))}</strong></div>
+                  <div><span>Publicado em</span><strong>{new Date(release.updated_at).toLocaleDateString("pt-BR")}</strong></div>
+                </div>
+                <a className="android-download-button" href={downloadUrl}>
+                  <AndroidIcon /> BAIXAR APLICATIVO PARA ANDROID
+                </a>
+                <div className="android-hash">
+                  <div><strong>SHA-256 do arquivo publicado</strong><code>{release.sha256}</code></div>
+                  <button type="button" onClick={copyHash}>{copiedHash ? "Copiado" : "Copiar hash"}</button>
+                </div>
+              </>
+            ) : (
+              <div className="android-not-published">
+                <strong>O aplicativo ainda não foi publicado</strong>
+                <p>Volte a esta página mais tarde ou peça o link diretamente ao vendedor.</p>
+              </div>
+            )}
+          </section>
+
+          <section className="android-security-card">
+            <h2>Instale com atenção à segurança</h2>
+            <ol>
+              <li>Confirme que está no site oficial <strong>pneusbrasilofc.com.br</strong> e baixe o APK somente por esta página.</li>
+              <li>Se o Android pedir autorização para instalar pelo navegador, permita apenas para esse navegador e desative a autorização depois da instalação.</li>
+              <li>Mantenha o Google Play Protect ativado. Se o Android avisar que o app pode ser nocivo, que o desenvolvedor não foi verificado ou bloquear a instalação, pare e fale com o vendedor. Não desative as proteções nem tente contornar o aviso.</li>
+              <li>Confira as permissões solicitadas pelo aplicativo e conceda somente as que fizerem sentido para o serviço.</li>
+            </ol>
+            <p className="android-security-note">O SHA-256 identifica exatamente o arquivo publicado, mas não é uma análise antivírus. O Android também verifica a assinatura digital do APK durante a instalação. Nenhuma página pode garantir risco zero; alertas do dispositivo devem ser respeitados.</p>
+            <div className="android-security-links">
+              <a href="https://support.google.com/googleplay/answer/2812853?hl=pt-BR" target="_blank" rel="noreferrer">Como o Google Play Protect protege seu aparelho</a>
+              <a href="https://support.google.com/android/answer/17588095?hl=pt-BR" target="_blank" rel="noreferrer">Informações do Android sobre apps de desenvolvedores não verificados</a>
+            </div>
+          </section>
+        </div>
+      </main>
+    </>
+  );
+}
+
 function TrackingPage() {
   const { code: routeCode } = useParams();
   const [code, setCode] = useState(routeCode || "");
@@ -1154,6 +1280,15 @@ function AdminPage() {
   const [linkError, setLinkError] = useState("");
   const [latestCheckoutLink, setLatestCheckoutLink] = useState("");
   const [copiedCheckoutToken, setCopiedCheckoutToken] = useState("");
+  const [appName, setAppName] = useState("PneusBrasil Rastreamento");
+  const [appVersion, setAppVersion] = useState("");
+  const [appDescription, setAppDescription] = useState("");
+  const [appReleaseNotes, setAppReleaseNotes] = useState("");
+  const [apkFile, setApkFile] = useState(null);
+  const [androidRelease, setAndroidRelease] = useState(null);
+  const [androidReleaseSaving, setAndroidReleaseSaving] = useState(false);
+  const [androidReleaseMessage, setAndroidReleaseMessage] = useState("");
+  const [androidReleaseError, setAndroidReleaseError] = useState("");
 
   useEffect(() => {
     if (!customImageFile) {
@@ -1187,6 +1322,21 @@ function AdminPage() {
     if (!linksError) setCheckoutLinks(data || []);
   };
 
+  const loadAndroidRelease = async () => {
+    if (!supabase) return;
+    const { data, error: releaseError } = await supabase
+      .from("android_app_releases")
+      .select("id, app_name, version, description, release_notes, file_path, file_size_bytes, sha256, updated_at")
+      .eq("id", "current")
+      .maybeSingle();
+    if (releaseError || !data) return;
+    setAndroidRelease(data);
+    setAppName(data.app_name);
+    setAppVersion(data.version);
+    setAppDescription(data.description);
+    setAppReleaseNotes(data.release_notes || "");
+  };
+
   useEffect(() => {
     if (!supabase) return;
     supabase.auth.getSession().then(({ data }) => {
@@ -1198,6 +1348,7 @@ function AdminPage() {
     if (!authenticated) return;
     loadOrders();
     loadCheckoutLinks();
+    loadAndroidRelease();
     if (!supabase) return;
     const channel = supabase
       .channel("admin-orders")
@@ -1327,6 +1478,66 @@ function AdminPage() {
     setLatestCheckoutLink(link);
     setCheckoutItems([]);
     await loadCheckoutLinks();
+  };
+
+  const publishAndroidRelease = async (event) => {
+    event.preventDefault();
+    setAndroidReleaseError("");
+    setAndroidReleaseMessage("");
+    if (!supabase || !apkFile) {
+      setAndroidReleaseError("Selecione o arquivo APK que deseja publicar.");
+      return;
+    }
+    if (!apkFile.name.toLowerCase().endsWith(".apk") || apkFile.size <= 0 || apkFile.size > 100 * 1024 * 1024) {
+      setAndroidReleaseError("Selecione um arquivo .apk de até 100 MB.");
+      return;
+    }
+    setAndroidReleaseSaving(true);
+    let uploadedPath = "";
+    try {
+      const digest = await crypto.subtle.digest("SHA-256", await apkFile.arrayBuffer());
+      const sha256 = [...new Uint8Array(digest)].map((byte) => byte.toString(16).padStart(2, "0")).join("");
+      const safeVersion = appVersion.trim().replace(/[^a-zA-Z0-9._-]/g, "-");
+      uploadedPath = `releases/${safeVersion}-${Date.now()}-${sha256.slice(0, 12)}.apk`;
+      const { error: uploadError } = await supabase.storage
+        .from("android-app-downloads")
+        .upload(uploadedPath, apkFile, {
+          cacheControl: "3600",
+          contentType: "application/vnd.android.package-archive",
+          upsert: false,
+        });
+      if (uploadError) throw uploadError;
+
+      const releaseData = {
+        id: "current",
+        app_name: appName.trim(),
+        version: appVersion.trim(),
+        description: appDescription.trim(),
+        release_notes: appReleaseNotes.trim() || null,
+        file_path: uploadedPath,
+        file_size_bytes: apkFile.size,
+        sha256,
+        updated_at: new Date().toISOString(),
+      };
+      const { data, error: saveError } = await supabase
+        .from("android_app_releases")
+        .upsert(releaseData)
+        .select("id, app_name, version, description, release_notes, file_path, file_size_bytes, sha256, updated_at")
+        .single();
+      if (saveError) throw saveError;
+
+      if (androidRelease?.file_path && androidRelease.file_path !== uploadedPath) {
+        await supabase.storage.from("android-app-downloads").remove([androidRelease.file_path]).catch(() => null);
+      }
+      setAndroidRelease(data);
+      setApkFile(null);
+      setAndroidReleaseMessage(`APK publicado. SHA-256: ${sha256}`);
+    } catch {
+      if (uploadedPath) await supabase.storage.from("android-app-downloads").remove([uploadedPath]).catch(() => null);
+      setAndroidReleaseError("Não foi possível publicar. Confira a migração do APK, a assinatura do arquivo e tente novamente.");
+    } finally {
+      setAndroidReleaseSaving(false);
+    }
   };
 
   const copyCheckoutLink = async (link, token) => {
@@ -1513,6 +1724,32 @@ function AdminPage() {
           <div><span>Novos</span><strong>{normalizedOrders.filter((order) => order.status === "Novo").length}</strong></div>
           <div><span>Valor em pedidos</span><strong>{money.format(normalizedOrders.reduce((total, order) => total + Number(order.total || 0), 0))}</strong></div>
         </section>
+        <section className="android-release-admin">
+          <div className="tracking-admin-head">
+            <div><span>Download para Android</span><h2>Publicar ou atualizar APK</h2></div>
+            <Link to="/app" target="_blank">Ver página pública</Link>
+          </div>
+          {androidRelease && (
+            <div className="android-current-release">
+              <strong>Versão atualmente publicada: {androidRelease.app_name} v{androidRelease.version}</strong>
+              <span>Atualizada em {new Date(androidRelease.updated_at).toLocaleString("pt-BR")} · {formatFileSize(Number(androidRelease.file_size_bytes))}</span>
+              <code>SHA-256: {androidRelease.sha256}</code>
+            </div>
+          )}
+          <form onSubmit={publishAndroidRelease}>
+            <label><span>Nome do aplicativo</span><input value={appName} onChange={(event) => setAppName(event.target.value)} required /></label>
+            <label><span>Versão</span><input value={appVersion} onChange={(event) => setAppVersion(event.target.value)} placeholder="Ex.: 1.0.0" required /></label>
+            <label className="android-release-wide"><span>Descrição para o cliente</span><input value={appDescription} onChange={(event) => setAppDescription(event.target.value)} placeholder="O que o cliente consegue acompanhar no aplicativo" required /></label>
+            <label className="android-release-wide"><span>Novidades desta versão</span><textarea value={appReleaseNotes} onChange={(event) => setAppReleaseNotes(event.target.value)} placeholder="Opcional" rows={3} /></label>
+            <label className="android-release-wide"><span>Arquivo APK (até 100 MB)</span><input key={apkFile?.name || "apk-empty"} type="file" accept=".apk,application/vnd.android.package-archive" onChange={(event) => setApkFile(event.target.files?.[0] || null)} required /></label>
+            <p className="android-admin-security-note">O painel calcula o SHA-256 do arquivo e publica apenas a versão carregada. Confirme que o APK foi assinado e verificado antes de enviá-lo; o painel não executa análise antivírus nem valida a identidade do certificado.</p>
+            {androidReleaseError && <div className="checkout-error">{androidReleaseError}</div>}
+            {androidReleaseMessage && <div className="android-upload-success">{androidReleaseMessage}</div>}
+            <button className="android-publish-button" type="submit" disabled={androidReleaseSaving}>
+              {androidReleaseSaving ? "ENVIANDO E CALCULANDO HASH..." : "PUBLICAR APK PARA ANDROID"}
+            </button>
+          </form>
+        </section>
         <section className="checkout-link-admin">
           <div className="tracking-admin-head">
             <div>
@@ -1695,6 +1932,8 @@ export default function App() {
           <Route path="/pedido/:token" element={<CheckoutPage />} />
           <Route path="/rastreamento/:code" element={<TrackingPage />} />
           <Route path="/rastreamento" element={<TrackingPage />} />
+          <Route path="/app" element={<AndroidDownloadPage />} />
+          <Route path="/baixar-aplicativo" element={<AndroidDownloadPage />} />
           <Route path="/admin" element={<AdminPage />} />
           <Route path="*" element={<CatalogApp />} />
         </Routes>
