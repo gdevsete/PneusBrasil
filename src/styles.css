@@ -1942,11 +1942,6 @@ main { min-height: 700px; background: #f5f6f8; }
 .android-download-button { min-height: 52px; display: flex; align-items: center; justify-content: center; gap: 9px; border-radius: 10px; background: #27833d; color: #fff; padding: 10px 14px; font-size: 12px; font-weight: 900; text-align: center; text-decoration: none; }
 .android-download-button:hover { background: #1f6f33; }
 .android-download-button svg { width: 22px; height: 22px; }
-.android-hash { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-top: 14px; border-radius: 9px; background: #f5f7f6; padding: 11px; }
-.android-hash > div { min-width: 0; display: flex; flex-direction: column; gap: 5px; }
-.android-hash strong { color: #687265; font-size: 9px; }
-.android-hash code, .android-current-release code { overflow-wrap: anywhere; color: #3d4640; font-size: 9px; line-height: 14px; }
-.android-hash button { flex: 0 0 auto; height: 32px; border: 1px solid #d4dfd6; border-radius: 7px; background: #fff; color: #287d3d; padding: 0 9px; font-size: 9px; font-weight: 800; cursor: pointer; }
 .android-not-published { padding: 10px 0; }
 .android-not-published strong { color: #303932; font-size: 14px; }
 .android-not-published p, .android-download-error { color: #687265; font-size: 11px; line-height: 17px; }

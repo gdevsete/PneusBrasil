@@ -39,7 +39,6 @@ create table if not exists public.android_app_releases (
   release_notes text,
   file_path text not null,
   file_size_bytes bigint not null check (file_size_bytes > 0),
-  sha256 text not null check (sha256 ~ '^[A-Fa-f0-9]{64}$'),
   updated_at timestamptz not null default now(),
   uploaded_by uuid not null default auth.uid() references auth.users(id)
 );
@@ -63,7 +62,6 @@ returns table (
   release_notes text,
   file_path text,
   file_size_bytes bigint,
-  sha256 text,
   updated_at timestamptz
 )
 language sql
@@ -77,7 +75,6 @@ as $$
     r.release_notes,
     r.file_path,
     r.file_size_bytes,
-    r.sha256,
     r.updated_at
   from public.android_app_releases r
   where r.id = 'current'

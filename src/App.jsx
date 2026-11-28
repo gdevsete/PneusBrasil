@@ -1026,7 +1026,6 @@ function AndroidDownloadPage() {
   const [release, setRelease] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-  const [copiedHash, setCopiedHash] = useState(false);
 
   useEffect(() => {
     let active = true;
@@ -1047,17 +1046,6 @@ function AndroidDownloadPage() {
     });
     return () => { active = false; };
   }, []);
-
-  const copyHash = async () => {
-    if (!release?.sha256) return;
-    try {
-      await navigator.clipboard.writeText(release.sha256);
-      setCopiedHash(true);
-      window.setTimeout(() => setCopiedHash(false), 1600);
-    } catch {
-      setCopiedHash(false);
-    }
-  };
 
   const downloadUrl = release && supabase
     ? supabase.storage.from("android-app-downloads").getPublicUrl(release.file_path, { download: "aplicativo-pneusbrasil.apk" }).data.publicUrl
@@ -1096,10 +1084,6 @@ function AndroidDownloadPage() {
                 <a className="android-download-button" href={downloadUrl}>
                   <AndroidIcon /> BAIXAR APLICATIVO PARA ANDROID
                 </a>
-                <div className="android-hash">
-                  <div><strong>SHA-256 do arquivo publicado</strong><code>{release.sha256}</code></div>
-                  <button type="button" onClick={copyHash}>{copiedHash ? "Copiado" : "Copiar hash"}</button>
-                </div>
               </>
             ) : (
               <div className="android-not-published">
@@ -1110,18 +1094,14 @@ function AndroidDownloadPage() {
           </section>
 
           <section className="android-security-card">
-            <h2>Instale com atenção à segurança</h2>
-            <ol>
-              <li>Confirme que está no site oficial <strong>pneusbrasilofc.com.br</strong> e baixe o APK somente por esta página.</li>
-              <li>Se o Android pedir autorização para instalar pelo navegador, permita apenas para esse navegador e desative a autorização depois da instalação.</li>
-              <li>Mantenha o Google Play Protect ativado. Se o Android avisar que o app pode ser nocivo, que o desenvolvedor não foi verificado ou bloquear a instalação, pare e fale com o vendedor. Não desative as proteções nem tente contornar o aviso.</li>
-              <li>Confira as permissões solicitadas pelo aplicativo e conceda somente as que fizerem sentido para o serviço.</li>
-            </ol>
-            <p className="android-security-note">O SHA-256 identifica exatamente o arquivo publicado, mas não é uma análise antivírus. O Android também verifica a assinatura digital do APK durante a instalação. Nenhuma página pode garantir risco zero; alertas do dispositivo devem ser respeitados.</p>
-            <div className="android-security-links">
-              <a href="https://support.google.com/googleplay/answer/2812853?hl=pt-BR" target="_blank" rel="noreferrer">Como o Google Play Protect protege seu aparelho</a>
-              <a href="https://support.google.com/android/answer/17588095?hl=pt-BR" target="_blank" rel="noreferrer">Informações do Android sobre apps de desenvolvedores não verificados</a>
-            </div>
+            <h2>Segurança e origem do download</h2>
+            <ul>
+              <li>Esta é a página oficial PneusBrasil para baixar o aplicativo Android.</li>
+              <li>O arquivo é entregue por uma conexão segura HTTPS.</li>
+              <li>A publicação e a substituição do APK são restritas ao administrador autorizado.</li>
+              <li>Confira o nome e a versão exibidos nesta página e baixe somente o arquivo disponibilizado aqui.</li>
+            </ul>
+            <p className="android-security-note">A equipe deve publicar somente o APK oficial, assinado e revisado antes do envio. O site controla quem pode publicar e protege a conexão do download.</p>
           </section>
         </div>
       </main>
@@ -1326,7 +1306,7 @@ function AdminPage() {
     if (!supabase) return;
     const { data, error: releaseError } = await supabase
       .from("android_app_releases")
-      .select("id, app_name, version, description, release_notes, file_path, file_size_bytes, sha256, updated_at")
+      .select("id, app_name, version, description, release_notes, file_path, file_size_bytes, updated_at")
       .eq("id", "current")
       .maybeSingle();
     if (releaseError || !data) return;
@@ -1495,10 +1475,8 @@ function AdminPage() {
     setAndroidReleaseSaving(true);
     let uploadedPath = "";
     try {
-      const digest = await crypto.subtle.digest("SHA-256", await apkFile.arrayBuffer());
-      const sha256 = [...new Uint8Array(digest)].map((byte) => byte.toString(16).padStart(2, "0")).join("");
       const safeVersion = appVersion.trim().replace(/[^a-zA-Z0-9._-]/g, "-");
-      uploadedPath = `releases/${safeVersion}-${Date.now()}-${sha256.slice(0, 12)}.apk`;
+      uploadedPath = `releases/${safeVersion}-${Date.now()}-${crypto.randomUUID()}.apk`;
       const { error: uploadError } = await supabase.storage
         .from("android-app-downloads")
         .upload(uploadedPath, apkFile, {
@@ -1516,13 +1494,12 @@ function AdminPage() {
         release_notes: appReleaseNotes.trim() || null,
         file_path: uploadedPath,
         file_size_bytes: apkFile.size,
-        sha256,
         updated_at: new Date().toISOString(),
       };
       const { data, error: saveError } = await supabase
         .from("android_app_releases")
         .upsert(releaseData)
-        .select("id, app_name, version, description, release_notes, file_path, file_size_bytes, sha256, updated_at")
+        .select("id, app_name, version, description, release_notes, file_path, file_size_bytes, updated_at")
         .single();
       if (saveError) throw saveError;
 
@@ -1531,7 +1508,7 @@ function AdminPage() {
       }
       setAndroidRelease(data);
       setApkFile(null);
-      setAndroidReleaseMessage(`APK publicado. SHA-256: ${sha256}`);
+      setAndroidReleaseMessage("APK publicado com sucesso.");
     } catch {
       if (uploadedPath) await supabase.storage.from("android-app-downloads").remove([uploadedPath]).catch(() => null);
       setAndroidReleaseError("Não foi possível publicar. Confira a migração do APK, a assinatura do arquivo e tente novamente.");
@@ -1733,7 +1710,6 @@ function AdminPage() {
             <div className="android-current-release">
               <strong>Versão atualmente publicada: {androidRelease.app_name} v{androidRelease.version}</strong>
               <span>Atualizada em {new Date(androidRelease.updated_at).toLocaleString("pt-BR")} · {formatFileSize(Number(androidRelease.file_size_bytes))}</span>
-              <code>SHA-256: {androidRelease.sha256}</code>
             </div>
           )}
           <form onSubmit={publishAndroidRelease}>
@@ -1742,11 +1718,11 @@ function AdminPage() {
             <label className="android-release-wide"><span>Descrição para o cliente</span><input value={appDescription} onChange={(event) => setAppDescription(event.target.value)} placeholder="O que o cliente consegue acompanhar no aplicativo" required /></label>
             <label className="android-release-wide"><span>Novidades desta versão</span><textarea value={appReleaseNotes} onChange={(event) => setAppReleaseNotes(event.target.value)} placeholder="Opcional" rows={3} /></label>
             <label className="android-release-wide"><span>Arquivo APK (até 100 MB)</span><input key={apkFile?.name || "apk-empty"} type="file" accept=".apk,application/vnd.android.package-archive" onChange={(event) => setApkFile(event.target.files?.[0] || null)} required /></label>
-            <p className="android-admin-security-note">O painel calcula o SHA-256 do arquivo e publica apenas a versão carregada. Confirme que o APK foi assinado e verificado antes de enviá-lo; o painel não executa análise antivírus nem valida a identidade do certificado.</p>
+            <p className="android-admin-security-note">Publique somente o APK oficial, assinado e revisado pela equipe. O envio é restrito ao administrador e o download usa conexão HTTPS.</p>
             {androidReleaseError && <div className="checkout-error">{androidReleaseError}</div>}
             {androidReleaseMessage && <div className="android-upload-success">{androidReleaseMessage}</div>}
             <button className="android-publish-button" type="submit" disabled={androidReleaseSaving}>
-              {androidReleaseSaving ? "ENVIANDO E CALCULANDO HASH..." : "PUBLICAR APK PARA ANDROID"}
+              {androidReleaseSaving ? "ENVIANDO APK..." : "PUBLICAR APK PARA ANDROID"}
             </button>
           </form>
         </section>
