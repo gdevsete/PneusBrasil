@@ -1133,6 +1133,7 @@ function AdminPage() {
   const [trackingLocation, setTrackingLocation] = useState("");
   const [trackingDescription, setTrackingDescription] = useState("");
   const [checkoutItems, setCheckoutItems] = useState([]);
+  const [checkoutPriceDrafts, setCheckoutPriceDrafts] = useState({});
   const [productSearch, setProductSearch] = useState("");
   const [customBrand, setCustomBrand] = useState("");
   const [customPrice, setCustomPrice] = useState("");
@@ -1220,8 +1221,22 @@ function AdminPage() {
   };
 
   const updateCheckoutPrice = (slug, price) => {
-    const normalizedPrice = Math.round(Math.max(0, Number(price) || 0) * 100) / 100;
+    const normalizedPrice = Math.round(Math.max(0, price || 0) * 100) / 100;
     setCheckoutItems((current) => current.map((item) => item.slug === slug ? { ...item, price: normalizedPrice } : item));
+  };
+
+  const updateCheckoutPriceDraft = (slug, value) => {
+    setCheckoutPriceDrafts((current) => ({ ...current, [slug]: value }));
+    const parsedPrice = parseBrazilianPrice(value);
+    if (Number.isFinite(parsedPrice) && parsedPrice >= 0) updateCheckoutPrice(slug, parsedPrice);
+  };
+
+  const finishCheckoutPriceEdit = (slug) => {
+    setCheckoutPriceDrafts((current) => {
+      const next = { ...current };
+      delete next[slug];
+      return next;
+    });
   };
 
   const addCustomCheckoutProduct = async () => {
@@ -1539,7 +1554,7 @@ function AdminPage() {
                 <article key={item.slug}>
                   <div><strong>{item.brand || "Marca não informada"}</strong><span>{item.name}</span><small>{money.format(item.price)} cada</small></div>
                   <label><span>Qtd.</span><input type="number" min="0" max="99" value={item.quantity} onChange={(event) => updateCheckoutQuantity(item.slug, Number(event.target.value))} /></label>
-                  <label><span>Unitário</span><input type="number" min="0.01" step="0.01" value={item.price} onChange={(event) => updateCheckoutPrice(item.slug, event.target.value)} /></label>
+                  <label><span>Unitário</span><input type="text" inputMode="decimal" value={checkoutPriceDrafts[item.slug] ?? item.price.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} onChange={(event) => updateCheckoutPriceDraft(item.slug, event.target.value)} onBlur={() => finishCheckoutPriceEdit(item.slug)} /></label>
                   <b>{money.format(item.price * item.quantity)}</b>
                 </article>
               ))}
@@ -1547,7 +1562,7 @@ function AdminPage() {
             </div>
           )}
           {linkError && <div className="checkout-error">{linkError}</div>}
-          <button className="checkout-link-create" type="button" onClick={createCheckoutLink} disabled={linkSaving || checkoutItems.length === 0 || checkoutItems.some((item) => item.price <= 0)}>
+          <button className="checkout-link-create" type="button" onClick={createCheckoutLink} disabled={linkSaving || checkoutItems.length === 0 || checkoutItems.some((item) => item.price <= 0 || (checkoutPriceDrafts[item.slug] !== undefined && !Number.isFinite(parseBrazilianPrice(checkoutPriceDrafts[item.slug]))))}>
             {linkSaving ? "GERANDO LINK..." : "GERAR LINK PARA O CLIENTE"}
           </button>
           {latestCheckoutLink && (
