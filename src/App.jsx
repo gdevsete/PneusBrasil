@@ -881,6 +881,13 @@ function CheckoutPage() {
           <span>Pedido recebido</span>
           <h1>Seu pedido foi enviado!</h1>
           <p>Um dos nossos vendedores entrará em contato pelo WhatsApp para confirmar as informações e o pedido.</p>
+          <aside className="checkout-tracking-notice">
+            <strong>Acompanhe sua entrega em tempo real</strong>
+            <p>Peça ao vendedor o link do aplicativo de rastreamento para baixar. Com ele, você acompanha todo o percurso do pedido, da loja até sua casa, com transparência em cada etapa.</p>
+            <a href={`https://wa.me/?text=${encodeURIComponent("Olá! Enviei meu pedido e quero acompanhar a entrega em tempo real. Por favor, me envie o link do aplicativo de rastreamento para baixar.")}`} target="_blank" rel="noreferrer">
+              PEDIR LINK DO APLICATIVO PELO WHATSAPP
+            </a>
+          </aside>
           <div className="success-payment">
             <strong>PAGAMENTO NA ENTREGA</strong>
             <span>Nenhum valor foi cobrado antecipadamente</span>
