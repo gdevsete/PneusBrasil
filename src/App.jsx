@@ -1509,9 +1509,17 @@ function AdminPage() {
       setAndroidRelease(data);
       setApkFile(null);
       setAndroidReleaseMessage("APK publicado com sucesso.");
-    } catch {
+    } catch (publishError) {
       if (uploadedPath) await supabase.storage.from("android-app-downloads").remove([uploadedPath]).catch(() => null);
-      setAndroidReleaseError("Não foi possível publicar. Confira a migração do APK, a assinatura do arquivo e tente novamente.");
+      const errorDetails = [publishError?.message, publishError?.details, publishError?.hint].filter(Boolean).join(" ");
+      const normalizedError = errorDetails.toLowerCase();
+      if (normalizedError.includes("sha256") || normalizedError.includes("schema cache")) {
+        setAndroidReleaseError("O banco ainda está com a estrutura antiga. No Supabase, execute a migração supabase/migrations/20261128_remove_android_apk_hash.sql e tente publicar novamente.");
+      } else if (publishError?.code === "42501" || normalizedError.includes("row-level security") || normalizedError.includes("permission denied")) {
+        setAndroidReleaseError("O Supabase recusou a publicação. Entre no painel com a conta administradora autorizada e confira as políticas da migração do APK.");
+      } else {
+        setAndroidReleaseError(`Não foi possível publicar: ${publishError?.message || "erro inesperado no Supabase"}`);
+      }
     } finally {
       setAndroidReleaseSaving(false);
     }
